@@ -9,6 +9,7 @@ CREATE_USER_URL = reverse('user:create')
 TOKEN_URL = reverse('user:token')
 ME_URL = reverse('user:me')
 
+
 def create_user(**params):
     return get_user_model().objects.create_user(**params)
 
@@ -30,7 +31,7 @@ class PublicUserApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         # print(res.data)
         user = get_user_model().objects.get(**res.data)
-        self.assertEqual(user.password, payload['password'])
+        self.assertTrue(user.check_password(payload['password']))
         self.assertNotIn('password', res.data)
 
     def test_user_exists(self):
@@ -117,17 +118,16 @@ class PrivateUserApiTests(TestCase):
 
     def test_post_me_not_allowed(self):
 
-        res = self.client.get(ME_URL)
+        res = self.client.post(ME_URL, {})
 
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_update_user_profile(self):
 
         payload = {'name': 'new name', 'password': 'newpassword123'}
-        
         res = self.client.patch(ME_URL, payload)
 
         self.user.refresh_from_db()
         self.assertEqual(self.user.name, payload['name'])
-        self.assertTrue(self.user.password, payload['password'])
+        self.assertTrue(self.user.check_password(payload['password']))
         self.assertEqual(res.status_code, status.HTTP_200_OK)
